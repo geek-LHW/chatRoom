@@ -3,37 +3,79 @@ package main
 import (
 	"fmt"
 	"net"
+	"sync"
 )
 
+// Server is a structure containing IP and ports
 type Server struct {
-	Ip   string
+	IP   string
 	Port int
+	//A list of online users
+	OnlineMap map[string]*User
+	maplock   sync.RWMutex
+
+	//News broadcast
+	Message chan string
 }
 
+// NewServer is An API to create a server
 func NewServer(ip string, port int) *Server {
 	server := &Server{
-		Ip:   ip,
-		Port: port,
+		IP:        ip,
+		Port:      port,
+		OnlineMap: make(map[string]*User),
+		Message:   make(chan string),
 	}
 	return server
 }
 
-func (this *Server) Hander(conn net.Conn) {
-	// Currently linked business …
-	fmt.Println("链接建立成功")
-
+// ListenMessage is a method that listens on the Message broadcast message channel and sends a message to all online users as soon as it is available
+func (s *Server) ListenMessage() {
+	for {
+		msg := <-s.Message
+		s.maplock.Lock()
+		for _, cli := range s.OnlineMap {
+			cli.C <- msg
+		}
+		s.maplock.Unlock()
+	}
 }
 
-//An interface to start the server
-func (this *Server) start() {
+// Broadcast is a method to broadcast a message
+func (s *Server) Broadcast(user *User, msg string) {
+	sendMsg := "[" + user.Addr + "]" + user.Name + ":" + msg
+	s.Message <- sendMsg
+}
+
+// Handler is a method of dealing with business
+func (s *Server) Handler(conn net.Conn) {
+	// Currently linked business …
+	// fmt.Println("链接建立成功")
+	user := NewUser(conn)
+	// The user goes online and adds the user to the OnlineMap
+	s.maplock.Lock()
+	s.OnlineMap[user.Name] = user
+	s.maplock.Unlock()
+	// Broadcast the current user online message
+	s.Broadcast(user, "已上线")
+	// HANDER is currently blocked
+	select {}
+}
+
+//Start is an interface to start the server
+func (s *Server) Start() {
 	//socket listen
-	Listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", this.Ip, this.Port))
+	Listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.IP, s.Port))
 	if err != nil {
 		fmt.Println("net Listen err:", err)
 		return
 	}
 	//close socket listen
 	defer Listener.Close()
+
+	//Start the goroutine that listens for messages
+
+	go s.ListenMessage()
 	for {
 		//accept
 		conn, err := Listener.Accept()
@@ -41,8 +83,8 @@ func (this *Server) start() {
 			fmt.Println("Listener accept err:", err)
 			continue
 		}
-		//do hander
-		go this.Hander(conn)
+		//do handler
+		go s.Handler(conn)
 	}
 
 }
