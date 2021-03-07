@@ -52,13 +52,8 @@ func (s *Server) Broadcast(user *User, msg string) {
 func (s *Server) Handler(conn net.Conn) {
 	// Currently linked business …
 	// fmt.Println("链接建立成功")
-	user := NewUser(conn)
-	// The user goes online and adds the user to the OnlineMap
-	s.maplock.Lock()
-	s.OnlineMap[user.Name] = user
-	s.maplock.Unlock()
-	// Broadcast the current user online message
-	s.Broadcast(user, "已上线")
+	user := NewUser(conn, s)
+	user.OnLine()
 
 	// Receive the message sent by the client
 	go func() {
@@ -66,7 +61,8 @@ func (s *Server) Handler(conn net.Conn) {
 		for {
 			n, err := conn.Read(buf)
 			if n == 0 {
-				s.Broadcast(user, "已下线")
+				user.OffLine()
+				return
 			}
 			if err != nil && err != io.EOF {
 				fmt.Println("Conn Read err:", err)
@@ -75,7 +71,7 @@ func (s *Server) Handler(conn net.Conn) {
 			// Extract user information and remove "\n"
 			msg := string(buf[:n-1])
 			// Broadcast the information received
-			s.Broadcast(user, msg)
+			user.DoMessage(msg)
 		}
 	}()
 
