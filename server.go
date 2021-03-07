@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"sync"
 )
@@ -58,6 +59,26 @@ func (s *Server) Handler(conn net.Conn) {
 	s.maplock.Unlock()
 	// Broadcast the current user online message
 	s.Broadcast(user, "已上线")
+
+	// Receive the message sent by the client
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := conn.Read(buf)
+			if n == 0 {
+				s.Broadcast(user, "已下线")
+			}
+			if err != nil && err != io.EOF {
+				fmt.Println("Conn Read err:", err)
+				return
+			}
+			// Extract user information and remove "\n"
+			msg := string(buf[:n-1])
+			// Broadcast the information received
+			s.Broadcast(user, msg)
+		}
+	}()
+
 	// HANDER is currently blocked
 	select {}
 }
