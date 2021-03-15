@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 // Server is a structure containing IP and ports
@@ -51,10 +52,11 @@ func (s *Server) Broadcast(user *User, msg string) {
 // Handler is a method of dealing with business
 func (s *Server) Handler(conn net.Conn) {
 	// Currently linked business …
-	// fmt.Println("链接建立成功")
 	user := NewUser(conn, s)
 	user.OnLine()
 
+	//A channel that listens to see if the user is active
+	isLive := make(chan bool)
 	// Receive the message sent by the client
 	go func() {
 		buf := make([]byte, 4096)
@@ -72,11 +74,32 @@ func (s *Server) Handler(conn net.Conn) {
 			msg := string(buf[:n-1])
 			// Broadcast the information received
 			user.DoMessage(msg)
+			// Any message from a user indicates that the current user is active
+			isLive <- true
 		}
 	}()
 
 	// HANDER is currently blocked
-	select {}
+	for {
+		select {
+		case <-isLive:
+			// The current user is active and should reset the timer
+			// Do nothing. To activate the SELECT, update the following timer
+		case <-time.After(time.Second * 500):
+			// The timeout has expired
+			// Force the User to close
+			user.SendMsg("You have been kicked")
+			time.Sleep(time.Duration(2)*time.Second)
+			//Destruction of resources used
+			close(user.C)
+
+			//Close the connection
+			conn.Close()
+
+			//Exit the current Handler
+			return //runtime.Goexit()
+		}
+	}
 }
 
 //Start is an interface to start the server
