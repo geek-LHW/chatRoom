@@ -52,7 +52,7 @@ func (u *User) OffLine() {
 }
 
 //SendMsg is an API for user to send a message to himself
-func (u *User)SendMsg(msg string){
+func (u *User) SendMsg(msg string) {
 	u.conn.Write([]byte(msg))
 }
 
@@ -67,9 +67,9 @@ func (u *User) DoMessage(msg string) {
 		}
 		u.server.maplock.Unlock()
 
-	}else if len(msg) > 7 && msg[:7] == "rename|" {
+	} else if len(msg) > 7 && msg[:7] == "rename|" {
 		//The message format: rename|tom
-		newName := strings.Split(msg,"|")[1]
+		newName := strings.Split(msg, "|")[1]
 		//Check if name exists
 		_, ok := u.server.OnlineMap[newName]
 		if ok {
@@ -83,7 +83,7 @@ func (u *User) DoMessage(msg string) {
 			u.Name = newName
 			u.SendMsg("You have updated the user name:" + u.Name + "\n")
 		}
-	}else if len(msg) > 4 && msg[:3] == "to|" {
+	} else if len(msg) > 4 && msg[:3] == "to|" {
 		//The message format:  to|Tom|The message content
 
 		//1. Get the user name of the other party
@@ -108,10 +108,10 @@ func (u *User) DoMessage(msg string) {
 		}
 		remoteUser.SendMsg(u.Name + "Said to you:" + content)
 
-	}else {
-		u.server.Broadcast(u,msg)
+	} else {
+		u.server.Broadcast(u, msg)
 	}
-	
+
 }
 
 // ListenMessage is a method that listens for the current user channel and sends a message directly to the opposite client
