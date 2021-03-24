@@ -14,7 +14,7 @@ type Server struct {
 	Port int
 	//A list of online users
 	OnlineMap map[string]*User
-	maplock   sync.RWMutex
+	maplock   sync.Mutex
 
 	//News broadcast
 	Message chan string
@@ -89,7 +89,7 @@ func (s *Server) Handler(conn net.Conn) {
 			// The timeout has expired
 			// Force the User to close
 			user.SendMsg("You have been kicked")
-			time.Sleep(time.Duration(2)*time.Second)
+			time.Sleep(time.Duration(2) * time.Second)
 			//Destruction of resources used
 			close(user.C)
 
